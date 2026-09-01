@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Optional, Protocol, runtime_checkable
-from contracts.tasks import SubTask, TaskStatus
+from typing import Protocol, runtime_checkable
+
 from contracts.events import FleetEvent
+from contracts.tasks import SubTask, TaskStatus
 
 
 @dataclass(frozen=True)
 class HarnessExecutionResult:
     """Standard outcome returned by an agent harness."""
+
     subtask_id: str
     status: TaskStatus
     iterations_used: int
     diff: str
-    error_log: Optional[str] = None
-    summary: Optional[str] = None
+    error_log: str | None = None
+    summary: str | None = None
 
 
 @runtime_checkable

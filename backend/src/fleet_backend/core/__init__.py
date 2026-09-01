@@ -1,4 +1,5 @@
 """Core module for fleet backend."""
-from fleet_backend.core.worktree_manager import WorktreeManager, WorktreeEnvironment
 
-__all__ = ["WorktreeManager", "WorktreeEnvironment"]
+from fleet_backend.core.worktree_manager import WorktreeEnvironment, WorktreeManager
+
+__all__ = ["WorktreeEnvironment", "WorktreeManager"]

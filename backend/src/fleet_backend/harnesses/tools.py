@@ -5,10 +5,9 @@ Ensures zero path traversal outside the allocated worktree.
 
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 
 class WorktreeToolbox:
@@ -43,7 +42,7 @@ class WorktreeToolbox:
         except Exception as e:
             return f"Error writing file '{file_path}': {e}"
 
-    def run_command(self, command: str, timeout: int = 60) -> Dict[str, Any]:
+    def run_command(self, command: str, timeout: int = 60) -> dict[str, Any]:
         """Run tests/linters in the worktree directory."""
         try:
             proc = subprocess.run(

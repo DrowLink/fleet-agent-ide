@@ -6,15 +6,16 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
+from contracts.events import EventType, FleetEvent
+from contracts.tasks import SubTask, TaskStatus
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
-from contracts.events import EventType, FleetEvent
-from contracts.tasks import SubTask, TaskStatus
 from fleet_backend.harnesses.base import BaseHarness
 from fleet_backend.harnesses.tools import WorktreeToolbox
 
@@ -27,21 +28,21 @@ class WorkerGraphState(TypedDict):
     title: str
     instruction: str
     worktree_path: str
-    target_files: List[str]
-    test_command: Optional[str]
-    messages: List[BaseMessage]
+    target_files: list[str]
+    test_command: str | None
+    messages: list[BaseMessage]
     iteration: int
     max_retries: int
-    test_result: Optional[Dict[str, Any]]
-    error_feedback: Optional[str]
+    test_result: dict[str, Any] | None
+    error_feedback: str | None
     status: TaskStatus
-    summary: Optional[str]
+    summary: str | None
 
 
 class LangGraphHarness(BaseHarness):
     """Execution driver that runs a reflective LangGraph loop in an isolated worktree."""
 
-    def __init__(self, llm: Optional[BaseChatModel] = None):
+    def __init__(self, llm: BaseChatModel | None = None):
         self.llm = llm
         self._graph = self._build_graph()
 
@@ -50,14 +51,16 @@ class LangGraphHarness(BaseHarness):
         return "langgraph"
 
     def _build_graph(self) -> Any:
-        def inspect_node(state: WorkerGraphState) -> Dict[str, Any]:
+        def inspect_node(state: WorkerGraphState) -> dict[str, Any]:
             toolbox = WorktreeToolbox(state["worktree_path"])
             file_contexts = []
             for file_path in state.get("target_files", []):
                 content = toolbox.read_file(file_path)
                 file_contexts.append(f"--- File: {file_path} ---\n{content}\n")
 
-            joined_files = "\n".join(file_contexts) if file_contexts else "No specific files pre-selected."
+            joined_files = (
+                "\n".join(file_contexts) if file_contexts else "No specific files pre-selected."
+            )
             system_prompt = (
                 "You are an autonomous senior software engineer operating inside an isolated Git worktree.\n"
                 f"Subtask: {state['title']}\n"
@@ -70,7 +73,7 @@ class LangGraphHarness(BaseHarness):
             ]
             return {"messages": messages, "iteration": 0, "status": TaskStatus.WORKING}
 
-        def execute_node(state: WorkerGraphState) -> Dict[str, Any]:
+        def execute_node(state: WorkerGraphState) -> dict[str, Any]:
             iteration = state["iteration"] + 1
             messages = list(state["messages"])
             if state.get("error_feedback"):
@@ -88,15 +91,22 @@ class LangGraphHarness(BaseHarness):
                 response = self.llm.invoke(messages)
                 messages.append(response)
             else:
-                messages.append(AIMessage(content=f"Executed code modifications (Iteration {iteration})."))
+                messages.append(
+                    AIMessage(content=f"Executed code modifications (Iteration {iteration}).")
+                )
 
             return {"messages": messages, "iteration": iteration}
 
-        def validate_node(state: WorkerGraphState) -> Dict[str, Any]:
+        def validate_node(state: WorkerGraphState) -> dict[str, Any]:
             test_cmd = state.get("test_command")
             if not test_cmd:
                 return {
-                    "test_result": {"exit_code": 0, "stdout": "No tests configured.", "stderr": "", "success": True},
+                    "test_result": {
+                        "exit_code": 0,
+                        "stdout": "No tests configured.",
+                        "stderr": "",
+                        "success": True,
+                    },
                     "error_feedback": None,
                 }
 
@@ -119,13 +129,13 @@ class LangGraphHarness(BaseHarness):
                 return "execute_changes"
             return "finalize_failure"
 
-        def finalize_success(state: WorkerGraphState) -> Dict[str, Any]:
+        def finalize_success(state: WorkerGraphState) -> dict[str, Any]:
             return {
                 "status": TaskStatus.READY_TO_MERGE,
                 "summary": f"Completed and verified in {state['iteration']} iteration(s).",
             }
 
-        def finalize_failure(state: WorkerGraphState) -> Dict[str, Any]:
+        def finalize_failure(state: WorkerGraphState) -> dict[str, Any]:
             return {
                 "status": TaskStatus.NEEDS_REVIEW,
                 "summary": f"Failed after {state['iteration']} attempts. Last error: {state.get('error_feedback')}",
@@ -187,8 +197,8 @@ class LangGraphHarness(BaseHarness):
         )
 
         for output in self._graph.stream(initial_state):
-            for node_name, state_update in output.items():
-                if "test_result" in state_update and state_update["test_result"]:
+            for state_update in output.values():
+                if state_update.get("test_result"):
                     yield FleetEvent(
                         event_id=uuid.uuid4().hex,
                         event_type=EventType.TEST_VALIDATION_RESULT,
@@ -203,7 +213,9 @@ class LangGraphHarness(BaseHarness):
                         task_id=subtask.parent_task_id,
                         subtask_id=subtask.id,
                         payload={
-                            "status": state_update["status"].value if isinstance(state_update["status"], TaskStatus) else state_update["status"],
+                            "status": state_update["status"].value
+                            if isinstance(state_update["status"], TaskStatus)
+                            else state_update["status"],
                             "summary": state_update.get("summary"),
                         },
                     )

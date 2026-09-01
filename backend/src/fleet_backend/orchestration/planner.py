@@ -5,18 +5,18 @@ Supervisor / Planner Agent for decomposing issues into atomic subtasks.
 from __future__ import annotations
 
 import uuid
-from typing import List, Optional
-from langchain_core.language_models import BaseChatModel
+
 from contracts.tasks import SubTask, SubTaskPlan, TaskDecomposition, TaskStatus
+from langchain_core.language_models import BaseChatModel
 
 
 class PlannerAgent:
     """Decomposes feature prompts or issues into subtasks with target files and validation commands."""
 
-    def __init__(self, llm: Optional[BaseChatModel] = None):
+    def __init__(self, llm: BaseChatModel | None = None):
         self.llm = llm
 
-    def plan_task(self, prompt: str, repo_summary: str = "") -> List[SubTask]:
+    def plan_task(self, prompt: str, repo_summary: str = "") -> list[SubTask]:
         parent_id = f"task-{uuid.uuid4().hex[:8]}"
 
         if self.llm:
@@ -43,10 +43,10 @@ class PlannerAgent:
                 )
             ]
 
-        subtasks: List[SubTask] = []
+        subtasks: list[SubTask] = []
         for i, p in enumerate(plans):
             subtask = SubTask(
-                id=f"{parent_id}-sub-{i+1}",
+                id=f"{parent_id}-sub-{i + 1}",
                 parent_task_id=parent_id,
                 title=p.title,
                 description=p.description,

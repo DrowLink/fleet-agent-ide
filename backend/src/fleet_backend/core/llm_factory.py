@@ -4,9 +4,9 @@ LLM Factory supporting Ollama (offline local), Google Gemini (free tier), OpenAI
 
 from __future__ import annotations
 
-import os
 import logging
-from typing import Optional
+import os
+
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_llm(
-    provider: Optional[str] = None,
-    model_name: Optional[str] = None,
+    provider: str | None = None,
+    model_name: str | None = None,
     temperature: float = 0.2,
 ) -> BaseChatModel:
     """Instantiate a chat model based on environment configuration or provider parameter.
@@ -43,8 +43,10 @@ def get_llm(
         # Google AI Studio OpenAI-compatible endpoint or gemini
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is required for provider 'google'")
-        
+            raise ValueError(
+                "GOOGLE_API_KEY environment variable is required for provider 'google'"
+            )
+
         # Google AI Studio supports OpenAI compatibility at https://generativelanguage.googleapis.com/v1beta/openai/
         model = model_name or os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
         logger.info("Initializing Google AI Studio model '%s'", model)
@@ -58,7 +60,9 @@ def get_llm(
     elif prov == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is required for provider 'openai'")
+            raise ValueError(
+                "OPENAI_API_KEY environment variable is required for provider 'openai'"
+            )
         model = model_name or os.getenv("OPENAI_MODEL", "gpt-4o")
         return ChatOpenAI(
             api_key=api_key,

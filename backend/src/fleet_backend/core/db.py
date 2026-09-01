@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Optional
+
 import aiosqlite
-from contracts.tasks import Task, SubTask, TaskStatus
+from contracts.tasks import Task, TaskStatus
 
 
 class TaskStore:
@@ -111,8 +111,8 @@ class TaskStore:
         self,
         subtask_id: str,
         status: TaskStatus,
-        error_log: Optional[str] = None,
-        retry_count: Optional[int] = None,
+        error_log: str | None = None,
+        retry_count: int | None = None,
     ) -> None:
         """Update status and retry info for a subtask."""
         async with aiosqlite.connect(self.db_path) as db:
@@ -136,14 +136,14 @@ class TaskStore:
                 )
             await db.commit()
 
-    async def list_tasks(self) -> List[dict]:
+    async def list_tasks(self) -> list[dict]:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT * FROM tasks ORDER BY created_at DESC")
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
-    async def get_task(self, task_id: str) -> Optional[dict]:
+    async def get_task(self, task_id: str) -> dict | None:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
@@ -151,7 +151,9 @@ class TaskStore:
             if not row:
                 return None
             task_dict = dict(row)
-            sub_cursor = await db.execute("SELECT * FROM subtasks WHERE parent_task_id = ?", (task_id,))
+            sub_cursor = await db.execute(
+                "SELECT * FROM subtasks WHERE parent_task_id = ?", (task_id,)
+            )
             sub_rows = await sub_cursor.fetchall()
             task_dict["subtasks"] = [dict(s) for s in sub_rows]
             return task_dict

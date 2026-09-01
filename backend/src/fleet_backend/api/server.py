@@ -5,20 +5,25 @@ FastAPI Server & Real-time Task Lifecycle Streaming Daemon.
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
-from typing import AsyncGenerator, Dict, Any, List, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from collections.abc import AsyncGenerator
+from typing import Any
+
+from contracts.events import EventType, FleetEvent
+from contracts.tasks import Task, TaskStatus
+from fastapi import BackgroundTasks, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from contracts.events import FleetEvent, EventType
-from contracts.tasks import Task, TaskStatus, SubTask
 from fleet_backend.core.db import TaskStore
-from fleet_backend.core.worktree_manager import WorktreeManager
 from fleet_backend.core.llm_factory import get_llm
+from fleet_backend.core.worktree_manager import WorktreeManager
 from fleet_backend.orchestration.planner import PlannerAgent
 from fleet_backend.orchestration.scheduler import FleetScheduler
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Fleet Agent IDE Daemon",
@@ -64,7 +69,7 @@ task_store = TaskStore()
 
 try:
     active_llm = get_llm()
-except Exception as e:
+except Exception:
     active_llm = None
 
 planner = PlannerAgent(llm=active_llm)
@@ -137,12 +142,14 @@ async def get_task_diff(task_id: str):
     for sub in task_data.get("subtasks", []):
         sub_id = sub.get("id")
         diff_content = worktree_mgr.get_diff(sub_id)
-        subtasks_diffs.append({
-            "subtask_id": sub_id,
-            "title": sub.get("title"),
-            "branch": sub.get("branch_name"),
-            "diff": diff_content,
-        })
+        subtasks_diffs.append(
+            {
+                "subtask_id": sub_id,
+                "title": sub.get("title"),
+                "branch": sub.get("branch_name"),
+                "diff": diff_content,
+            }
+        )
         if diff_content:
             combined_diff.append(f"# Subtask: {sub.get('title')} ({sub_id})\n{diff_content}")
 
@@ -176,7 +183,10 @@ async def merge_task(task_id: str):
                 event_id=f"merge-{task_id}",
                 event_type=EventType.TASK_STATUS_CHANGED,
                 task_id=task_id,
-                payload={"status": TaskStatus.COMPLETED.value, "summary": "Successfully merged into main"},
+                payload={
+                    "status": TaskStatus.COMPLETED.value,
+                    "summary": "Successfully merged into main",
+                },
             )
         )
 
@@ -207,7 +217,10 @@ async def delete_task_and_worktrees(task_id: str):
             event_id=f"del-{task_id}",
             event_type=EventType.TASK_STATUS_CHANGED,
             task_id=task_id,
-            payload={"status": "deleted", "summary": f"Task {task_id} deleted and worktrees cleaned"},
+            payload={
+                "status": "deleted",
+                "summary": f"Task {task_id} deleted and worktrees cleaned",
+            },
         )
     )
 
@@ -217,7 +230,8 @@ async def delete_task_and_worktrees(task_id: str):
 @app.get("/api/events/sse")
 async def sse_event_stream() -> EventSourceResponse:
     """SSE endpoint for live task lifecycle and test feedback events."""
-    async def event_generator() -> AsyncGenerator[Dict[str, Any], None]:
+
+    async def event_generator() -> AsyncGenerator[dict[str, Any], None]:
         q = await event_bus.subscribe()
         try:
             while True:

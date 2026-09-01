@@ -9,12 +9,12 @@ agent execution and branch generation.
 from __future__ import annotations
 
 import logging
-import os
 import shutil
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, List, Optional
+from typing import Any
 
 import git
 from git.exc import GitCommandError, InvalidGitRepositoryError
@@ -24,22 +24,20 @@ logger = logging.getLogger(__name__)
 
 class WorktreeManagerError(Exception):
     """Base exception for WorktreeManager operations."""
-    pass
 
 
 class WorktreeCreationError(WorktreeManagerError):
     """Raised when a worktree cannot be created."""
-    pass
 
 
 class WorktreeCleanupError(WorktreeManagerError):
     """Raised when a worktree cannot be removed or cleaned up."""
-    pass
 
 
 @dataclass(frozen=True)
 class WorktreeEnvironment:
     """Metadata representing an isolated worktree allocation."""
+
     task_id: str
     branch_name: str
     worktree_path: Path
@@ -53,14 +51,16 @@ class WorktreeManager:
     def __init__(
         self,
         repo_path: str | Path,
-        worktree_base_dir: Optional[str | Path] = None,
+        worktree_base_dir: str | Path | None = None,
         branch_prefix: str = "agent",
     ) -> None:
         self.repo_path = Path(repo_path).resolve()
         self.branch_prefix = branch_prefix
 
         if not (self.repo_path / ".git").exists() and not self.repo_path.suffix == ".git":
-            raise InvalidGitRepositoryError(f"Directory {self.repo_path} is not a valid Git repository.")
+            raise InvalidGitRepositoryError(
+                f"Directory {self.repo_path} is not a valid Git repository."
+            )
 
         self.repo = git.Repo(self.repo_path)
 
@@ -97,7 +97,9 @@ class WorktreeManager:
             self.cleanup_worktree(task_id, force=True, delete_branch=False)
 
         if target_path.exists() and any(target_path.iterdir()):
-            raise WorktreeCreationError(f"Target worktree path already exists and is not empty: {target_path}")
+            raise WorktreeCreationError(
+                f"Target worktree path already exists and is not empty: {target_path}"
+            )
 
         try:
             base_commit = self.repo.commit(base_ref).hexsha
@@ -121,7 +123,9 @@ class WorktreeManager:
             if target_path.exists():
                 shutil.rmtree(target_path, ignore_errors=True)
             self.repo.git.worktree("prune")
-            raise WorktreeCreationError(f"Unable to initialize worktree for task {task_id}: {e}") from e
+            raise WorktreeCreationError(
+                f"Unable to initialize worktree for task {task_id}: {e}"
+            ) from e
 
     def cleanup_worktree(
         self,
@@ -161,10 +165,10 @@ class WorktreeManager:
         except Exception as e:
             raise WorktreeCleanupError(f"Failed to cleanup worktree {task_id}: {e}") from e
 
-    def list_worktrees(self) -> List[dict[str, str]]:
+    def list_worktrees(self) -> list[dict[str, str]]:
         try:
             output = self.repo.git.worktree("list", "--porcelain")
-            entries: List[dict[str, str]] = []
+            entries: list[dict[str, str]] = []
             current_entry: dict[str, str] = {}
 
             for line in output.splitlines():
@@ -219,7 +223,9 @@ class WorktreeManager:
             current_active = self.repo.active_branch.name
             if current_active != target_branch:
                 self.repo.git.checkout(target_branch)
-            self.repo.git.merge(branch_name, "-m", f"Merge branch '{branch_name}' via Fleet Agent IDE")
+            self.repo.git.merge(
+                branch_name, "-m", f"Merge branch '{branch_name}' via Fleet Agent IDE"
+            )
             return {"success": True, "message": f"Merged {branch_name} into {target_branch}"}
         except Exception as e:
             logger.error("Merge error for %s: %s", branch_name, e)
@@ -242,6 +248,8 @@ class WorktreeManager:
             raise
         finally:
             if failed and keep_worktree_on_failure:
-                logger.warning("Task %s failed. Preserving worktree at '%s'.", task_id, env.worktree_path)
+                logger.warning(
+                    "Task %s failed. Preserving worktree at '%s'.", task_id, env.worktree_path
+                )
             else:
                 self.cleanup_worktree(task_id=task_id, force=True, delete_branch=delete_branch)

@@ -5,17 +5,18 @@ Fleet CLI Main Entrypoint with 1-Command App Launcher.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import time
-import subprocess
 import webbrowser
 from pathlib import Path
+
 import typer
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.live import Live
 import uvicorn
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from fleet_cli.client import FleetClient
 
 app = typer.Typer(
@@ -146,7 +147,7 @@ def run(
     client = FleetClient(server)
     try:
         res = client.create_task(title=title, prompt=prompt, base_ref=base_ref)
-        console.print(f"[bold green]✔ Task created and scheduled successfully![/bold green]")
+        console.print("[bold green]✔ Task created and scheduled successfully![/bold green]")
         console.print(f"Task ID: [cyan]{res['task_id']}[/cyan] (Subtasks: {res['subtasks_count']})")
     except Exception as e:
         console.print(f"[bold red]Failed to submit task: {e}[/bold red]")
@@ -171,7 +172,12 @@ def status(
         table.add_column("Created At", style="green")
 
         for t in tasks:
-            table.add_row(t.get("id", ""), t.get("title", ""), t.get("status", ""), t.get("created_at", "")[:19])
+            table.add_row(
+                t.get("id", ""),
+                t.get("title", ""),
+                t.get("status", ""),
+                t.get("created_at", "")[:19],
+            )
 
         console.print(table)
     except Exception as e:

@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
+
 from contracts.events import EventType, FleetEvent
 from contracts.tasks import SubTask, Task, TaskStatus
+from langchain_core.language_models import BaseChatModel
+
 from fleet_backend.core.db import TaskStore
 from fleet_backend.core.worktree_manager import WorktreeManager
 from fleet_backend.harnesses.base import BaseHarness
@@ -25,14 +27,14 @@ class FleetScheduler:
         self,
         worktree_manager: WorktreeManager,
         task_store: TaskStore,
-        event_callback: Optional[Callable[[FleetEvent], None]] = None,
-        llm: Optional[BaseChatModel] = None,
+        event_callback: Callable[[FleetEvent], None] | None = None,
+        llm: BaseChatModel | None = None,
     ):
         self.worktree_mgr = worktree_manager
         self.task_store = task_store
         self.event_callback = event_callback
         self.llm = llm
-        self.harnesses: Dict[str, BaseHarness] = {
+        self.harnesses: dict[str, BaseHarness] = {
             "langgraph": LangGraphHarness(llm=self.llm),
         }
 
@@ -78,7 +80,9 @@ class FleetScheduler:
 
         except Exception as e:
             logger.error("Execution error on subtask %s: %s", subtask.id, e)
-            await self.task_store.update_subtask_status(subtask.id, TaskStatus.FAILED, error_log=str(e))
+            await self.task_store.update_subtask_status(
+                subtask.id, TaskStatus.FAILED, error_log=str(e)
+            )
             await self._emit_event(
                 FleetEvent(
                     event_id=f"err-{subtask.id}",
