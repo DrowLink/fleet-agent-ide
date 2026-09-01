@@ -1,11 +1,12 @@
 import React from 'react';
-import { GitBranch, Eye, GitMerge, CheckCircle, Clock, AlertCircle, RefreshCw, Terminal, FileCode } from 'lucide-react';
+import { GitBranch, Eye, GitMerge, CheckCircle, Clock, AlertCircle, RefreshCw, Terminal, FileCode, Trash2 } from 'lucide-react';
 import { Task, SubTask } from '../types/fleet';
 
 interface TaskCardProps {
   task: Task;
   onOpenDiff: (task: Task) => void;
   onMerge: (task: Task) => void;
+  onDelete?: (task: Task) => void;
   isMerging?: boolean;
 }
 
@@ -13,6 +14,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   task,
   onOpenDiff,
   onMerge,
+  onDelete,
   isMerging = false,
 }) => {
   const isReadyToMerge = task.status === 'ready_to_merge';
@@ -35,33 +37,50 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </span>
           </div>
 
-          {isWorking && (
-            <span className="flex items-center space-x-1 text-[11px] font-semibold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-500/30">
-              <RefreshCw className="w-3 h-3 animate-spin" />
-              <span>Working</span>
-            </span>
-          )}
+          <div className="flex items-center space-x-1.5">
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Discard task "${task.title || task.id}" and clean up worktree?`)) {
+                    onDelete(task);
+                  }
+                }}
+                title="Discard task & delete worktree"
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-950/60 text-slate-500 hover:text-rose-400 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
 
-          {isReadyToMerge && (
-            <span className="flex items-center space-x-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
-              <CheckCircle className="w-3 h-3" />
-              <span>Ready</span>
-            </span>
-          )}
+            {isWorking && (
+              <span className="flex items-center space-x-1 text-[11px] font-semibold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-500/30">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Working</span>
+              </span>
+            )}
 
-          {isFailed && (
-            <span className="flex items-center space-x-1 text-[11px] font-semibold text-rose-400 bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-500/30">
-              <AlertCircle className="w-3 h-3" />
-              <span>Needs Review</span>
-            </span>
-          )}
+            {isReadyToMerge && (
+              <span className="flex items-center space-x-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                <CheckCircle className="w-3 h-3" />
+                <span>Ready</span>
+              </span>
+            )}
 
-          {isCompleted && (
-            <span className="flex items-center space-x-1 text-[11px] font-semibold text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded-full border border-indigo-500/30">
-              <CheckCircle className="w-3 h-3" />
-              <span>Merged</span>
-            </span>
-          )}
+            {isFailed && (
+              <span className="flex items-center space-x-1 text-[11px] font-semibold text-rose-400 bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-500/30">
+                <AlertCircle className="w-3 h-3" />
+                <span>Needs Review</span>
+              </span>
+            )}
+
+            {isCompleted && (
+              <span className="flex items-center space-x-1 text-[11px] font-semibold text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                <CheckCircle className="w-3 h-3" />
+                <span>Merged</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Title & Prompt */}

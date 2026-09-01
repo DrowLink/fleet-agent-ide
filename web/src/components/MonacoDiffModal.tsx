@@ -1,23 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { X, GitBranch, GitMerge, Check, Copy, FileDiff, Sparkles } from 'lucide-react';
+import { X, GitBranch, GitMerge, Check, Copy, FileDiff, Sparkles, Trash2 } from 'lucide-react';
 import { DiffEditor } from '@monaco-editor/react';
 import { Task, TaskDiffResponse } from '../types/fleet';
-import { fetchTaskDiff, mergeTask } from '../api/client';
+import { fetchTaskDiff, mergeTask, deleteTask } from '../api/client';
 
 interface MonacoDiffModalProps {
   task: Task;
   onClose: () => void;
   onMergedSuccess: () => void;
+  onDeleteSuccess?: () => void;
 }
 
 export const MonacoDiffModal: React.FC<MonacoDiffModalProps> = ({
   task,
   onClose,
   onMergedSuccess,
+  onDeleteSuccess,
 }) => {
   const [diffData, setDiffData] = useState<TaskDiffResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMerging, setIsMerging] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeSubtaskIndex, setActiveSubtaskIndex] = useState(0);
 
@@ -50,6 +53,22 @@ export const MonacoDiffModal: React.FC<MonacoDiffModalProps> = ({
       alert('Failed to merge: ' + err);
     } finally {
       setIsMerging(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to discard task "${task.title || task.id}" and remove all isolated worktrees?`)) {
+      return;
+    }
+    try {
+      setIsDeleting(true);
+      await deleteTask(task.id);
+      if (onDeleteSuccess) onDeleteSuccess();
+      onClose();
+    } catch (err) {
+      alert('Failed to delete task: ' + err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -99,6 +118,15 @@ export const MonacoDiffModal: React.FC<MonacoDiffModalProps> = ({
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy Diff'}</span>
+            </button>
+
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-xs font-medium border border-rose-500/30 transition-all disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isDeleting ? 'Discarding...' : 'Discard Task'}</span>
             </button>
 
             {task.status === 'ready_to_merge' && (

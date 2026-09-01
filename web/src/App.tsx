@@ -6,7 +6,7 @@ import { TerminalStream } from './components/TerminalStream';
 import { NewTaskModal } from './components/NewTaskModal';
 import { useFleetEvents } from './hooks/useFleetEvents';
 import { Task } from './types/fleet';
-import { mergeTask } from './api/client';
+import { mergeTask, deleteTask } from './api/client';
 import { GitBranch, Layers, CheckCircle2, RefreshCw, Zap, Sparkles } from 'lucide-react';
 
 export function App() {
@@ -36,6 +36,24 @@ export function App() {
       alert('Failed to merge: ' + err.message);
     } finally {
       setMergingTaskId(null);
+    }
+  };
+
+  const handleDeleteTask = async (task: Task) => {
+    try {
+      const res = await deleteTask(task.id);
+      if (res.success) {
+        appendLog({
+          id: Math.random().toString(),
+          timestamp: new Date().toISOString(),
+          taskId: task.id,
+          stream: 'system',
+          text: `🗑️ Discarded task ${task.id} and cleaned worktrees.`,
+        });
+        refreshData();
+      }
+    } catch (err: any) {
+      alert('Failed to delete task: ' + err.message);
     }
   };
 
@@ -106,6 +124,7 @@ export function App() {
             tasks={tasks}
             onOpenDiff={(task) => setSelectedDiffTask(task)}
             onMerge={handleMerge}
+            onDelete={handleDeleteTask}
             mergingTaskId={mergingTaskId}
           />
         </section>
@@ -125,6 +144,10 @@ export function App() {
           task={selectedDiffTask}
           onClose={() => setSelectedDiffTask(null)}
           onMergedSuccess={() => {
+            refreshData();
+            setSelectedDiffTask(null);
+          }}
+          onDeleteSuccess={() => {
             refreshData();
             setSelectedDiffTask(null);
           }}

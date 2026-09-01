@@ -68,3 +68,11 @@ export async function mergeTask(taskId: string): Promise<{ success: boolean; det
   if (!res.ok) throw new Error('Failed to merge task');
   return res.json();
 }
+
+export async function deleteTask(taskId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to delete task');
+  return res.json();
+}

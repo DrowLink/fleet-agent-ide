@@ -155,3 +155,10 @@ class TaskStore:
             sub_rows = await sub_cursor.fetchall()
             task_dict["subtasks"] = [dict(s) for s in sub_rows]
             return task_dict
+
+    async def delete_task(self, task_id: str) -> None:
+        """Delete a task and its subtasks from SQLite."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM subtasks WHERE parent_task_id = ?", (task_id,))
+            await db.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            await db.commit()

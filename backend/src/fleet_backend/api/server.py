@@ -183,6 +183,37 @@ async def merge_task(task_id: str):
     return {"success": all_success, "details": results}
 
 
+@app.delete("/api/tasks/{task_id}")
+async def delete_task_and_worktrees(task_id: str):
+    """Delete a task and completely remove its associated Git worktrees and branches."""
+    task_data = await task_store.get_task(task_id)
+    if not task_data:
+        return {"success": False, "error": "Task not found"}
+
+    # Clean up each subtask worktree & branch
+    for sub in task_data.get("subtasks", []):
+        sub_id = sub.get("id")
+        try:
+            worktree_mgr.cleanup_worktree(sub_id, force=True, delete_branch=True)
+        except Exception as e:
+            logger.warning("Could not clean worktree %s: %s", sub_id, e)
+
+    # Remove from DB
+    await task_store.delete_task(task_id)
+
+    # Broadcast deletion
+    await event_bus.broadcast(
+        FleetEvent(
+            event_id=f"del-{task_id}",
+            event_type=EventType.TASK_STATUS_CHANGED,
+            task_id=task_id,
+            payload={"status": "deleted", "summary": f"Task {task_id} deleted and worktrees cleaned"},
+        )
+    )
+
+    return {"success": True, "message": f"Task {task_id} and its worktrees were deleted"}
+
+
 @app.get("/api/events/sse")
 async def sse_event_stream() -> EventSourceResponse:
     """SSE endpoint for live task lifecycle and test feedback events."""

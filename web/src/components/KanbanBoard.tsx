@@ -7,6 +7,7 @@ interface KanbanBoardProps {
   tasks: Task[];
   onOpenDiff: (task: Task) => void;
   onMerge: (task: Task) => void;
+  onDelete?: (task: Task) => void;
   mergingTaskId?: string | null;
 }
 
@@ -14,6 +15,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   tasks,
   onOpenDiff,
   onMerge,
+  onDelete,
   mergingTaskId,
 }) => {
   const planningTasks = tasks.filter((t) => t.status === 'planning');
@@ -110,6 +112,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     task={task}
                     onOpenDiff={onOpenDiff}
                     onMerge={onMerge}
+                    onDelete={onDelete}
                     isMerging={mergingTaskId === task.id}
                   />
                 ))
