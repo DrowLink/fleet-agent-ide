@@ -25,7 +25,7 @@ app = typer.Typer(
 console = Console()
 
 
-@app.command()
+@app.command(name="app")
 def app_cmd(
     host: str = typer.Option("127.0.0.1", help="Host address to bind"),
     port: int = typer.Option(8000, help="Backend Daemon port"),
