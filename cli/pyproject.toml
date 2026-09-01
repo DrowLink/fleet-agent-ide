@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fleet-cli"
+version = "0.1.0"
+description = "Terminal Client for Fleet Agent IDE"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12.3",
+    "rich>=13.7.1",
+    "httpx>=0.27.0",
+    "pydantic>=2.8.0",
+]
+
+[project.scripts]
+fleet = "fleet_cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fleet_cli"]

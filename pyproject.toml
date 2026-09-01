@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fleet-agent-ide"
+version = "0.1.0"
+description = "Autonomous Multi-Agent Local Orchestrator with Git Worktree Isolation & LangGraph"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Fleet Agent IDE Contributors" }
+]
+dependencies = [
+    "fleet-backend",
+    "fleet-cli",
+    "fleet-contracts",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

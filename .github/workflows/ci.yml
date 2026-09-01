@@ -1,0 +1,39 @@
+name: Fleet Agent IDE CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-lint:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e "./contracts"
+        pip install -e "./backend"
+        pip install -e "./cli"
+        pip install pytest pytest-asyncio ruff
+
+    - name: Run Ruff Linter
+      run: ruff check .
+
+    - name: Run Pytest Suite
+      run: pytest -v
