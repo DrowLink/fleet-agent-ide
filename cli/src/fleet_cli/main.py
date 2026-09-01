@@ -1,13 +1,20 @@
 """
-Fleet CLI Main Entrypoint.
+Fleet CLI Main Entrypoint with 1-Command App Launcher.
 """
 
 from __future__ import annotations
 
+import os
+import sys
+import time
+import subprocess
+import webbrowser
+from pathlib import Path
 import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.live import Live
 import uvicorn
 from fleet_cli.client import FleetClient
 
@@ -19,13 +26,113 @@ console = Console()
 
 
 @app.command()
+def app_cmd(
+    host: str = typer.Option("127.0.0.1", help="Host address to bind"),
+    port: int = typer.Option(8000, help="Backend Daemon port"),
+    web_port: int = typer.Option(5173, help="Frontend UI port"),
+    no_browser: bool = typer.Option(False, help="Do not auto-open browser"),
+):
+    """🚀 Start the Fleet Agent IDE Full Suite (Daemon + Web Dashboard) in 1 command."""
+    console.print(
+        Panel.fit(
+            f"[bold cyan]🚀 Launching Fleet Agent IDE Full Suite[/bold cyan]\n"
+            f"[green]Backend Daemon:[/green] http://{host}:{port}\n"
+            f"[cyan]Web Dashboard:[/cyan] http://{host}:{web_port}",
+            border_style="cyan",
+        )
+    )
+
+    # Resolve repo root
+    cwd = Path.cwd()
+    web_dir = cwd / "web"
+
+    # Start Daemon process
+    daemon_cmd = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "fleet_backend.api.server:app",
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ]
+
+    daemon_proc = subprocess.Popen(
+        daemon_cmd,
+        cwd=str(cwd),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # Start Web Vite process
+    npm_exec = "npm.cmd" if os.name == "nt" else "npm"
+    web_proc = None
+    if web_dir.exists():
+        console.print("[dim]Starting Web Dashboard (Vite)...[/dim]")
+        web_proc = subprocess.Popen(
+            [npm_exec, "run", "dev", "--", "--port", str(web_port)],
+            cwd=str(web_dir),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    time.sleep(2)
+
+    ui_url = f"http://{host}:{web_port}"
+    if not no_browser:
+        console.print(f"[bold green]✔ Opening {ui_url} in your browser...[/bold green]")
+        webbrowser.open(ui_url)
+
+    console.print("[bold yellow]Press Ctrl+C to stop Fleet Agent IDE...[/bold yellow]")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Shutting down Fleet Agent IDE...[/bold red]")
+        if web_proc:
+            web_proc.terminate()
+        daemon_proc.terminate()
+        console.print("[green]Shutdown complete.[/green]")
+
+
+# Alias "fleet start" and "fleet ui" to "fleet app"
+@app.command(name="start")
+def start_cmd(
+    host: str = typer.Option("127.0.0.1", help="Host address to bind"),
+    port: int = typer.Option(8000, help="Backend Daemon port"),
+    web_port: int = typer.Option(5173, help="Frontend UI port"),
+    no_browser: bool = typer.Option(False, help="Do not auto-open browser"),
+):
+    """Alias for 'fleet app'."""
+    app_cmd(host=host, port=port, web_port=web_port, no_browser=no_browser)
+
+
+@app.command(name="ui")
+def ui_cmd(
+    host: str = typer.Option("127.0.0.1", help="Host address to bind"),
+    port: int = typer.Option(8000, help="Backend Daemon port"),
+    web_port: int = typer.Option(5173, help="Frontend UI port"),
+    no_browser: bool = typer.Option(False, help="Do not auto-open browser"),
+):
+    """Alias for 'fleet app'."""
+    app_cmd(host=host, port=port, web_port=web_port, no_browser=no_browser)
+
+
+@app.command()
 def daemon(
     host: str = typer.Option("127.0.0.1", help="Host address to bind"),
     port: int = typer.Option(8000, help="Port to run the API daemon"),
     reload: bool = typer.Option(False, help="Enable auto-reload"),
 ):
-    """Start the Fleet Daemon background service."""
-    console.print(Panel.fit(f"[bold cyan]Fleet Agent IDE Daemon[/bold cyan]\n[green]http://{host}:{port}[/green]", border_style="cyan"))
+    """Start the Fleet Daemon background service only."""
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Fleet Agent IDE Daemon[/bold cyan]\n[green]http://{host}:{port}[/green]",
+            border_style="cyan",
+        )
+    )
     uvicorn.run("fleet_backend.api.server:app", host=host, port=port, reload=reload)
 
 
