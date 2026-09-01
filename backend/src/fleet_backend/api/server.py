@@ -16,6 +16,7 @@ from contracts.events import FleetEvent, EventType
 from contracts.tasks import Task, TaskStatus, SubTask
 from fleet_backend.core.db import TaskStore
 from fleet_backend.core.worktree_manager import WorktreeManager
+from fleet_backend.core.llm_factory import get_llm
 from fleet_backend.orchestration.planner import PlannerAgent
 from fleet_backend.orchestration.scheduler import FleetScheduler
 
@@ -60,12 +61,19 @@ class EventBus:
 
 event_bus = EventBus()
 task_store = TaskStore()
-planner = PlannerAgent()
+
+try:
+    active_llm = get_llm()
+except Exception as e:
+    active_llm = None
+
+planner = PlannerAgent(llm=active_llm)
 worktree_mgr = WorktreeManager(".")
 scheduler = FleetScheduler(
     worktree_manager=worktree_mgr,
     task_store=task_store,
     event_callback=event_bus.broadcast,
+    llm=active_llm,
 )
 
 

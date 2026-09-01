@@ -26,12 +26,14 @@ class FleetScheduler:
         worktree_manager: WorktreeManager,
         task_store: TaskStore,
         event_callback: Optional[Callable[[FleetEvent], None]] = None,
+        llm: Optional[BaseChatModel] = None,
     ):
         self.worktree_mgr = worktree_manager
         self.task_store = task_store
         self.event_callback = event_callback
+        self.llm = llm
         self.harnesses: Dict[str, BaseHarness] = {
-            "langgraph": LangGraphHarness(),
+            "langgraph": LangGraphHarness(llm=self.llm),
         }
 
     def register_harness(self, harness: BaseHarness) -> None:
