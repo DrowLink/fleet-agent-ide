@@ -43,7 +43,7 @@ class TaskLifecycleEvent(BaseModel):
 class TerminalOutputEvent(BaseModel):
     """Payload for live PTY command / test execution output."""
     subtask_id: str
-    stream: str = "stdout"  # stdout, stderr, pty
+    stream: str = "stdout"
     chunk: str
     is_completed: bool = False
     exit_code: Optional[int] = None
