@@ -71,13 +71,12 @@ def app_cmd(
     if web_dir.exists():
         console.print("[dim]Starting Web Dashboard (Vite)...[/dim]")
         web_proc = subprocess.Popen(
-            [npm_exec, "run", "dev", "--", "--port", str(web_port)],
+            f"{npm_exec} run dev -- --port {web_port} --host {host}",
             cwd=str(web_dir),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            shell=True,
         )
 
-    time.sleep(2)
+    time.sleep(3)
 
     ui_url = f"http://{host}:{web_port}"
     if not no_browser:
