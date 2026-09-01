@@ -19,21 +19,26 @@ class PlannerAgent:
     def plan_task(self, prompt: str, repo_summary: str = "") -> list[SubTask]:
         parent_id = f"task-{uuid.uuid4().hex[:8]}"
 
+        plans = None
         if self.llm:
-            structured_llm = self.llm.with_structured_output(TaskDecomposition)
-            system_prompt = (
-                "You are the Lead Architect for Fleet Agent IDE.\n"
-                "Decompose the given software engineering task into atomic subtasks.\n"
-                "Each subtask will execute in its own isolated Git worktree.\n"
-                "Specify target files, clear instructions, and validation test commands."
-            )
-            messages = [
-                ("system", system_prompt),
-                ("human", f"Repository:\n{repo_summary}\n\nTask:\n{prompt}"),
-            ]
-            decomposition: TaskDecomposition = structured_llm.invoke(messages)  # type: ignore
-            plans = decomposition.subtasks
-        else:
+            try:
+                structured_llm = self.llm.with_structured_output(TaskDecomposition)
+                system_prompt = (
+                    "You are the Lead Architect for Fleet Agent IDE.\n"
+                    "Decompose the given software engineering task into atomic subtasks.\n"
+                    "Each subtask will execute in its own isolated Git worktree.\n"
+                    "Specify target files, clear instructions, and validation test commands."
+                )
+                messages = [
+                    ("system", system_prompt),
+                    ("human", f"Repository:\n{repo_summary}\n\nTask:\n{prompt}"),
+                ]
+                decomposition: TaskDecomposition = structured_llm.invoke(messages)  # type: ignore
+                plans = decomposition.subtasks
+            except Exception:
+                plans = None
+
+        if not plans:
             plans = [
                 SubTaskPlan(
                     title="Implement Task Changes",
