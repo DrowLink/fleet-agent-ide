@@ -35,6 +35,11 @@ ENV/
 .fleet/
 fleet_state.db
 
+# Node / Web Frontend
+web/node_modules/
+web/dist/
+.npm/
+
 # IDE & OS files
 .DS_Store
 Thumbs.db

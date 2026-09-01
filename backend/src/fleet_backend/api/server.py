@@ -125,6 +125,64 @@ async def create_and_run_task(req: CreateTaskRequest, background_tasks: Backgrou
     return {"task_id": task.id, "subtasks_count": len(subtasks), "status": "scheduled"}
 
 
+@app.get("/api/tasks/{task_id}/diff")
+async def get_task_diff(task_id: str):
+    """Retrieve git diffs generated across all subtasks of a task."""
+    task_data = await task_store.get_task(task_id)
+    if not task_data:
+        return {"diff": "", "subtasks_diffs": []}
+
+    subtasks_diffs = []
+    combined_diff = []
+    for sub in task_data.get("subtasks", []):
+        sub_id = sub.get("id")
+        diff_content = worktree_mgr.get_diff(sub_id)
+        subtasks_diffs.append({
+            "subtask_id": sub_id,
+            "title": sub.get("title"),
+            "branch": sub.get("branch_name"),
+            "diff": diff_content,
+        })
+        if diff_content:
+            combined_diff.append(f"# Subtask: {sub.get('title')} ({sub_id})\n{diff_content}")
+
+    return {
+        "task_id": task_id,
+        "diff": "\n\n".join(combined_diff),
+        "subtasks_diffs": subtasks_diffs,
+    }
+
+
+@app.post("/api/tasks/{task_id}/merge")
+async def merge_task(task_id: str):
+    """Merge all ready subtask branches of a task into main."""
+    task_data = await task_store.get_task(task_id)
+    if not task_data:
+        return {"success": False, "error": "Task not found"}
+
+    results = []
+    for sub in task_data.get("subtasks", []):
+        branch = sub.get("branch_name")
+        if branch:
+            res = worktree_mgr.merge_branch(branch, target_branch=task_data.get("base_ref", "main"))
+            results.append({"branch": branch, **res})
+
+    all_success = all(r.get("success", False) for r in results)
+    if all_success:
+        await task_store.update_subtask_status(task_id, TaskStatus.COMPLETED)
+        # Broadcast completed status
+        await event_bus.broadcast(
+            FleetEvent(
+                event_id=f"merge-{task_id}",
+                event_type=EventType.TASK_STATUS_CHANGED,
+                task_id=task_id,
+                payload={"status": TaskStatus.COMPLETED.value, "summary": "Successfully merged into main"},
+            )
+        )
+
+    return {"success": all_success, "details": results}
+
+
 @app.get("/api/events/sse")
 async def sse_event_stream() -> EventSourceResponse:
     """SSE endpoint for live task lifecycle and test feedback events."""

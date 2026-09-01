@@ -204,13 +204,26 @@ class WorktreeManager:
             return ""
         try:
             wt_repo = git.Repo(target_path)
-            return wt_repo.git.diff("HEAD~1" if len(wt_repo.iter_commits()) > 1 else "HEAD")
-        except Exception:
-            try:
-                wt_repo = git.Repo(target_path)
-                return wt_repo.git.diff()
-            except Exception:
-                return ""
+            # Stage any untracked or modified files for inspection if needed
+            diff = wt_repo.git.diff("HEAD")
+            if not diff:
+                diff = wt_repo.git.diff()
+            return diff
+        except Exception as e:
+            logger.error("Error getting diff for %s: %s", task_id, e)
+            return ""
+
+    def merge_branch(self, branch_name: str, target_branch: str = "main") -> dict[str, Any]:
+        """Merge an agent branch into target_branch."""
+        try:
+            current_active = self.repo.active_branch.name
+            if current_active != target_branch:
+                self.repo.git.checkout(target_branch)
+            self.repo.git.merge(branch_name, "-m", f"Merge branch '{branch_name}' via Fleet Agent IDE")
+            return {"success": True, "message": f"Merged {branch_name} into {target_branch}"}
+        except Exception as e:
+            logger.error("Merge error for %s: %s", branch_name, e)
+            return {"success": False, "error": str(e)}
 
     @contextmanager
     def session(
