@@ -1,34 +1,39 @@
-# CLAUDE.md
+# CLAUDE.md — Fleet Agent IDE
 
-Read and follow [`AGENTS.md`](AGENTS.md) for repository layout, commands, coding conventions, and hard rules.
+Guidelines and quick commands for Claude Code and related tooling.
 
-## App state lives under `~/.ao` only
+## 🚀 Common Commands
 
-All app state, the daemon's data dir, `running.json`, worktrees, and the Electron
-supervisor's `userData` (Chromium cache, cookies, local/session storage, crash
-dumps), must resolve under `~/.ao` (overridable via `AO_DATA_DIR`/`AO_RUN_FILE`).
-Never write to or read from `~/Library/Application Support` or any other OS-default
-app-data location. `frontend/src/main.ts` pins Electron's `userData` to
-`~/.ao/electron`; do not remove that override. See the hard rule in `AGENTS.md`.
+```bash
+# Environment Setup
+python -m venv .venv
+.venv\Scripts\Activate.ps1   # Windows
+source .venv/bin/activate    # Linux/macOS
 
-## Design System
+# Install in Editable Mode
+pip install -e "./contracts"
+pip install -e "./backend"
+pip install -e "./cli"
 
-Always read [`DESIGN.md`](DESIGN.md) before making any visual or UI decision —
-**start with the "clone agent-orchestrator verbatim" banner at the top**, which
-governs the current look.
+# Run Daemon
+fleet daemon --port 8000 --reload
 
-The renderer **clones the agent-orchestrator web app verbatim**
-(`~/Projects/agent-orchestrator/packages/web/src`) in looks and design, with a
-refined-blue accent and the terminal keeping its own palette. This **supersedes the
-older design-reference framing** in DESIGN.md (per explicit user decision 2026-06-10).
-Build new UI from shadcn primitives (`components/ui/*`) where a component fits. Do not
-deviate without explicit user approval. In QA/review, flag any renderer code that
-diverges from **agent-orchestrator** — do **not** re-flag old design-reference mismatches.
+# Run CLI Commands
+fleet run "Task description" --title "Task Title"
+fleet status
+fleet worktrees
 
-When showing or demoing frontend changes, run `ao preview [url]` from inside the
-session so the change renders in the desktop browser panel (the inspector rail's
-Browser tab); do not just describe it. `ao preview` updates the panel non-disruptively —
-it does not steal focus or force the Browser tab open if the user is looking at
-something else, only badging it as unseen. If the Browser tab isn't already the one
-the user has open, say so in your reply (e.g. "check the Browser tab") so the change
-doesn't go unnoticed behind the badge.
+# Run Frontend Dashboard
+cd web
+npm install
+npm run dev
+```
+
+## 🏗️ Architecture Conventions
+
+- **Language & Runtime**: Python 3.11+ (Backend/CLI), TypeScript + React 18 (Frontend).
+- **Core Abstractions**:
+  - `WorktreeManager`: Creates `agent/<task-id>` branches in `.fleet/worktrees/<task-id>`.
+  - `LangGraphHarness`: Manages reflective `inspect -> execute -> validate -> reflect` loops.
+  - `EventBus`: Broadcasts `FleetEvent` instances via Server-Sent Events (`/api/events/sse`).
+- **Code Style**: Ruff 100 char limit, explicit Pydantic type annotations, clean imports.

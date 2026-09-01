@@ -2,37 +2,40 @@
 
 # 🚀 Fleet Agent IDE
 
-### *Autonomous Multi-Agent Local Orchestrator with Git Worktree Isolation & LangGraph*
+### *The Open-Source Multi-Agent Orchestrator with Git Worktree Isolation & Self-Healing Loops*
 
-[![CI](https://github.com/your-org/fleet-agent-ide/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/fleet-agent-ide/actions)
+[![CI](https://github.com/DrowLink/fleet-agent-ide/actions/workflows/ci.yml/badge.svg)](https://github.com/DrowLink/fleet-agent-ide/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-7289da.svg)](https://discord.gg/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![LangGraph](https://img.shields.io/badge/Orchestrator-LangGraph-orange.svg)](https://langchain-ai.github.io/langgraph/)
+[![FastAPI](https://img.shields.io/badge/Daemon-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 
-**Run fleets of autonomous AI coding agents in parallel on your local codebase without git locks, file collisions, or Docker latency.**
+<br />
 
-[Key Features](#-superpowers) • [Architecture](#-architecture) • [Quickstart](#-quickstart) • [Documentation](docs/) • [Contributing](docs/development.md)
+**Run fleets of autonomous AI coding agents concurrently on your local repository with zero file collisions, zero git locks, and zero Docker latency.**
 
----
+[Quickstart](#-quickstart-in-3-minutes) • [Superpowers](#-superpowers) • [Web Dashboard](#-web-dashboard) • [Architecture](#-architecture) • [Documentation](docs/)
 
 </div>
 
-## 💡 What is Fleet Agent IDE?
+---
 
-Most AI coding agents modify your current branch directly or run inside heavy Docker containers. **Fleet Agent IDE** introduces a high-performance, zero-latency execution engine powered by **Git Worktrees** and **LangGraph**:
+## ⚡ The Problem: Why Traditional AI Coding Tools Get Stuck
 
-1. **Instant Worktree Isolation**: Spawns isolated local working copies (`agent/<task-id>`) in milliseconds with zero Docker overhead.
-2. **Supervisor-Worker DAG Orchestration**: Automatically breaks complex user goals into atomic subtasks with dependency management.
-3. **Autonomous Self-Correction Loop**: Validates code with real local test commands (`pytest`, `ruff`), intercepting `stderr` to iteratively self-heal code.
-4. **Contract-Driven Daemon**: Real-time state persistence in SQLite with live SSE and WebSocket streaming for terminal and web UIs.
+Most developer AI tools modify your active branch directly or run inside heavy virtual containers:
+* 🛑 **You can only run 1 task at a time** — your editor gets locked while the agent works.
+* 💥 **Multi-agent execution causes merge chaos** — agents overwrite each other's files and trigger `.git/index.lock` errors.
+* 🐢 **Docker/VMs are slow and resource-heavy** — wasting 10GB of RAM and taking 15s to start.
 
 ---
 
-## 🏛️ Architecture
+## 💡 The Fleet Solution: Native Git Worktrees + LangGraph
+
+**Fleet Agent IDE** replaces heavy containers with native **Git Worktree Isolation**:
 
 ```mermaid
 graph TD
-    User["👨‍💻 Developer (CLI / Web UI)"] <-->|REST + SSE / WebSockets| Daemon["⚡ Fleet Backend Daemon (FastAPI)"]
+    User["👨‍💻 Developer (Web Dashboard / CLI)"] <-->|REST + SSE Stream| Daemon["⚡ Fleet Backend Daemon (FastAPI)"]
     
     subgraph Core Engine
         Daemon <--> State["💾 Async SQLite Store (contracts/)"]
@@ -41,81 +44,90 @@ graph TD
         Scheduler --> WorktreeMgr["🛡️ Git Worktree Isolation Engine"]
     end
     
-    subgraph Isolated Worktrees & Harness Fleet
+    subgraph Isolated Worktrees & Parallel Agent Fleet
         WorktreeMgr -->|Allocate agent/sub-1| WT1["📁 Worktree 1 (.fleet/worktrees/sub-1)"]
         WorktreeMgr -->|Allocate agent/sub-2| WT2["📁 Worktree 2 (.fleet/worktrees/sub-2)"]
         
-        WT1 --> LangGraphWorker1["🤖 LangGraph Worker Harness"]
-        WT2 --> LangGraphWorker2["🤖 LangGraph Worker Harness"]
+        WT1 --> LangGraphWorker1["🤖 LangGraph Worker (Reflective Loop)"]
+        WT2 --> LangGraphWorker2["🤖 LangGraph Worker (Reflective Loop)"]
         
-        LangGraphWorker1 --> Test1{"🧪 Automated Test Loop"}
+        LangGraphWorker1 --> Test1{"🧪 Run Local Tests"}
         Test1 -- "❌ Exit != 0 (stderr)" --> Fix1["🔁 Self-Healing Reflection"]
         Fix1 --> LangGraphWorker1
         Test1 -- "✅ Exit == 0" --> Ready1["🎉 Ready to Merge"]
     end
 ```
 
----
-
-## 📂 Monorepo Layout
-
-```text
-fleet-agent-ide/
-├── contracts/                         # 📜 Typed Pydantic schemas shared across Daemon & Clients
-│   ├── tasks.py                       # Task, SubTask, DAG and TaskStatus models
-│   ├── events.py                      # SSE / WebSocket streaming event contracts
-│   └── harness.py                     # Pluggable Agent Harness Protocol
-├── backend/                           # 🧠 Execution Engine & Daemon Service
-│   ├── src/fleet_backend/
-│   │   ├── core/                      # Worktree isolation manager & SQLite store
-│   │   ├── harnesses/                 # Pluggable agent drivers (LangGraph, Claude, PTY)
-│   │   ├── orchestration/             # Supervisor planner and concurrent DAG scheduler
-│   │   └── api/                       # FastAPI REST, SSE, and WebSocket server
-│   └── pyproject.toml
-├── cli/                               # 💻 Rich Interactive Terminal Client
-│   ├── src/fleet_cli/                 # Typer + Rich terminal commands
-│   └── pyproject.toml
-├── docs/                              # 📚 Comprehensive Documentation
-│   ├── adr/                           # Architecture Decision Records (0001-0003)
-│   ├── superpowers/                   # Deep dives into core capabilities
-│   ├── architecture.md                # System design & topography
-│   └── development.md                 # Contributor guide & local setup
-└── tests/                             # Integration & Unit test suite
-```
+1. **Instant Spawning (<50ms)**: Spawns independent physical working copies on dedicated branches (`agent/<task-id>`).
+2. **Autonomous Self-Healing Loop**: The agent runs your local tests (`pytest`, `npm test`, `cargo test`), intercepts `stderr`, and fixes bugs iteratively before notifying you.
+3. **Works 100% Offline with Ollama ($0 Tokens) or Free Gemini 2.0 Flash**: Zero required paid subscriptions.
+4. **Live Web Dashboard & Diff Viewer**: Track agents in a multi-column Kanban board and inspect side-by-side Monaco diffs before merging.
 
 ---
 
-## ⚡ Quickstart
+## 🖥️ Web Dashboard
 
-### 1. Installation
+The Fleet Web Dashboard (`web/`) provides a visual control room for your agent fleet:
 
+* 📊 **Multi-Agent Kanban Board**: Real-time state columns (*Planning*, *Working*, *Self-Correction Loop*, *Ready to Merge*).
+* 🔍 **Monaco Diff Inspector**: Side-by-side git diff viewer with syntax highlighting and 1-click `[Merge to Main]`.
+* 📺 **Live SSE Terminal Streamer**: Watch agents execute tests and see `stdout`/`stderr` streamed live.
+
+---
+
+## 🚀 Quickstart in 3 Minutes
+
+### 1. Clone and Install
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/fleet-agent-ide.git
+git clone https://github.com/DrowLink/fleet-agent-ide.git
 cd fleet-agent-ide
 
-# Install in editable mode
+# Create & activate environment
+python -m venv .venv
+# On Windows: .venv\Scripts\Activate.ps1
+# On Linux/macOS: source .venv/bin/activate
+
+# Install packages in editable mode
 pip install -e "./contracts"
 pip install -e "./backend"
 pip install -e "./cli"
 ```
 
-### 2. Start the Daemon
+### 2. Configure Your LLM (Free Gemini or Offline Ollama)
+Create a `.env` file in the root:
 
+```env
+# Option A: 100% Free Gemini Flash (1,500 daily requests via Google AI Studio)
+LLM_PROVIDER="google"
+GOOGLE_API_KEY="your-google-ai-studio-key"
+
+# Option B: 100% Offline Local via Ollama ($0 tokens)
+# LLM_PROVIDER="ollama"
+# OLLAMA_MODEL="qwen2.5-coder:7b"
+```
+
+### 3. Launch the Daemon & Web Dashboard
 ```bash
+# Terminal 1: Start Backend Daemon
 fleet daemon --port 8000
+
+# Terminal 2: Start Web UI
+cd web
+npm install
+npm run dev
 ```
 
-### 3. Run a Task Fleet
+Open **`http://localhost:5173`** in your browser!
+
+---
+
+## 💻 CLI Usage (Terminal-First Developers)
 
 ```bash
-fleet run "Refactor authentication middleware to use JWT and add unit tests" --title "Auth Refactor"
-```
+# Dispatch a new task to the fleet
+fleet run "Refactor authentication middleware to use JWT" --title "JWT Auth"
 
-### 4. Inspect Fleet State
-
-```bash
-# List tasks and execution statuses
+# Inspect task lifecycle statuses
 fleet status
 
 # View currently active Git worktrees
@@ -124,21 +136,45 @@ fleet worktrees
 
 ---
 
-## 📚 Documentation & ADRs
+## 📂 Monorepo Architecture
 
-- [Architecture Topography](docs/architecture.md)
-- [ADR 0001: Git Worktree Isolation vs Containers](docs/adr/0001-git-worktree-isolation.md)
-- [ADR 0002: Contract-Driven Real-time Streaming](docs/adr/0002-contract-driven-streaming.md)
-- [ADR 0003: LangGraph Self-Healing Feedback Loop](docs/adr/0003-langgraph-self-healing-loop.md)
-- [Superpower: Zero-Collision Fleets](docs/superpowers/01-zero-collision-fleets.md)
-- [Superpower: Autonomous Test Loops](docs/superpowers/02-self-correcting-test-loops.md)
+```text
+fleet-agent-ide/
+├── contracts/                         # 📜 Typed Pydantic schemas (Tasks, Events, Harnesses)
+├── backend/                           # 🧠 FastAPI Daemon, Worktree Manager & LangGraph
+├── cli/                               # 💻 Typer + Rich Terminal Interface
+├── web/                               # 🖥️ React + Vite + Tailwind + Monaco Dashboard
+├── docs/                              # 📚 Architecture Decision Records (ADRs) & Guides
+│   ├── adr/                           # ADR 0001 (Worktrees), ADR 0002 (SSE), ADR 0003 (Loops)
+│   └── superpowers/                   # Deep dives into core capabilities
+├── AGENTS.md                          # 🤖 Operational context for AI coding agents
+├── CLAUDE.md                          # 📋 Claude Code conventions & commands
+├── CONTEXT.md                         # 🌐 Deep domain and distributed system context
+├── DESIGN.md                          # 🎨 UI/UX design tokens and component specs
+├── CONTRIBUTING.md                    # 🤝 Contributor guidelines & PR etiquette
+└── LICENSE                            # 📄 MIT License
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Git Worktree Isolation Engine
+- [x] LangGraph Self-Correction Feedback Loop
+- [x] FastAPI Daemon with REST + SSE Streaming
+- [x] Interactive Terminal CLI (`fleet run`, `fleet status`)
+- [x] React + Vite + Monaco Web Dashboard
+- [x] Ollama Local Offline & Google AI Studio Free Tier Support
+- [ ] Tree-Sitter Repository Map Generator (Aider-style AST indexing)
+- [ ] Surgical `Search/Replace` Patch Engine
+- [ ] Automated Multi-Branch Merge Queue with Conflict Resolution Agent
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are warmly welcomed! Please read our [Development Guide](docs/development.md) to get started.
+We welcome contributions of all kinds! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
